@@ -18,18 +18,21 @@
         cvs.bFunction = cvs.querySelector(".bFunction");
         cvs.translateX = translateX;
         cvs.translateY = translateY;
+        cvs.translateRow = translateRow;
+        cvs.translateCol = translateCol;
+        cvs.drawAxes = drawAxes;
+        cvs.draw = drawGraph;
 
         var drawBtn = cvs.querySelector(".generate");
-        drawBtn.cvs = cvs;
         drawBtn.addEventListener("click", drawGraph.bind(cvs));
 
-        /*var clearBtn = cvs.querySelector(".clear");
-        clearBtn.cvs = cvs;
-        clearBtn.addEventListener("click", clearPoints);*/
-
         var downBtn = cvs.querySelector(".download");
-        downBtn.cvs = cvs;
-        downBtn.addEventListener("click", downloadImage);
+        downBtn.addEventListener("click", downloadImage.bind(cvs));
+
+        cvs.showAxes = cvs.querySelector(".showAxes");
+        cvs.showAxes.addEventListener("input", drawGraph.bind(cvs));
+
+        cvs.draw();
       }
 
       function clearAll(){
@@ -42,26 +45,62 @@
         }
       }
 
-      function drawGraph() {
-        var ctx = this.canvas.ctx;
-        var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
-        var rFn = new Function("x", "y", "return " + this.rFunction.value);
-        var gFn = new Function("x", "y", "return " + this.gFunction.value);
-        var bFn = new Function("x", "y", "return " + this.bFunction.value);
-        for(var row = 0; row < this.canvas.height; row++){
-          var y = this.translateY(row);
-          for(var col = 0; col < this.canvas.width; col++){
-            var x = this.translateX(col);
+      function drawAxes() {
+        if(this.showAxes.checked){
+          var ctx = this.canvas.ctx;
+          ctx.fillStyle = "#000000";
+          console.log("Drawing axes");
+          if(this.minX <= 0.0 && this.maxX >= 0.0){
+            console.log("Drawing Y axis");
+            var zeroCol = this.translateCol(0.0);
+            console.log("zeroCol = " + zeroCol);
+            ctx.fillRect(zeroCol, 0, 1, this.canvas.height);
 
-            var r = rFn(x, y) * 255.0;
-            var g = gFn(x, y) * 255.0;
-            var b = bFn(x, y) * 255.0;
+            var notchSpacing = Math.pow(10, Math.ceil(Math.log10(this.maxY - this.minY)) - 1);
+            for(var y = this.minY; y <= this.maxY; y += notchSpacing){
+              var row = this.translateRow(y);
+              console.log(row);
+              ctx.fillRect(zeroCol, row, 5, 1);
+            }
+          }
+          if(this.minY <= 0.0 && this.maxY >= 0.0){
+            console.log("Drawing X axis");
+            var zeroRow = this.translateRow(0.0);
+            ctx.fillRect(0, zeroRow, this.canvas.width, 1);
 
-            applyColorToImage(imgData, this.canvas.width, col, row, r, g, b);
+            var notchSpacing = Math.pow(10, Math.ceil(Math.log10(this.maxX - this.minX)) - 1);
+            for(var x = this.minX; x <= this.maxX; x += notchSpacing){
+              var col = this.translateCol(x);
+              console.log(col);
+              ctx.fillRect(col, zeroRow, 1, -5);
+            }
           }
         }
-        ctx.putImageData(imgData, 0, 0);
-        // TODO: draw axes
+      }
+
+      function drawGraph() {
+        this.canvas.clearAll();
+        if(this.rFunction.value || this.gFunction.value || this.bFunction.value){
+          var ctx = this.canvas.ctx;
+          var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
+          var rFn = new Function("x", "y", "return " + this.rFunction.value);
+          var gFn = new Function("x", "y", "return " + this.gFunction.value);
+          var bFn = new Function("x", "y", "return " + this.bFunction.value);
+          for(var row = 0; row < this.canvas.height; row++){
+            var y = this.translateY(row);
+            for(var col = 0; col < this.canvas.width; col++){
+              var x = this.translateX(col);
+
+              var r = rFn(x, y) * 255.0;
+              var g = gFn(x, y) * 255.0;
+              var b = bFn(x, y) * 255.0;
+
+              applyColorToImage(imgData, this.canvas.width, col, row, r, g, b);
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+        }
+        this.drawAxes();
       }
 
       function translateX(col){
@@ -72,8 +111,16 @@
         return ((row / this.canvas.height) * (this.maxY - this.minY)) + this.minY;
       }
 
+      function translateCol(x){
+        return ((x - this.minX) / (this.maxX - this.minX)) * this.canvas.width;
+      }
+
+      function translateRow(y){
+        return ((y - this.minY) / (this.maxY - this.minY)) * this.canvas.height;
+      }
+
       function downloadImage(evt){
-        var data = this.cvs.canvas.toBlob(function(blob){
+        var data = this.canvas.toBlob(function(blob){
           var imgUrl = URL.createObjectURL(blob);
           var imgLink = document.querySelector("a.imgLink");
           imgLink.href = imgUrl;
@@ -97,22 +144,24 @@
   </head>
   <body>
     <div class="grapher">
-      <canvas width="800" height="600" style="border: 1px solid black;"></canvas>
+      <canvas width="1000" height="1000" style="border: 1px solid black;"></canvas>
       <div class="controls">
         <label>
           r =
-          <input type="text" class="rFunction" />
+          <input type="text" class="rFunction" size="100" />
         </label>
         <br />
         <label>
           g =
-          <input type="text" class="gFunction" />
+          <input type="text" class="gFunction" size="100" />
         </label>
         <br />
         <label>
           b =
-          <input type="text" class="bFunction" />
+          <input type="text" class="bFunction" size="100" />
         </label>
+        <br />
+        <label>Show Axes <input type="checkbox" class="showAxes" checked /></label>
         <br />
         <button class="generate">Graph</button>
         <button class="download">Download Image</button>
