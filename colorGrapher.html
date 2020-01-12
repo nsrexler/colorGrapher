@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>RGB Grapher</title>
+    <script type="text/javascript">//<![CDATA[
+      "use strict";
+
+      function initCanvas(cvs){
+        cvs.canvas = cvs.querySelector("canvas");
+        cvs.canvas.ctx = cvs.canvas.getContext("2d");
+        cvs.canvas.clearAll = clearAll;
+        cvs.minX = -5.0;
+        cvs.maxX = 5.0;
+        cvs.minY = -5.0;
+        cvs.maxY = 5.0;
+        cvs.rFunction = cvs.querySelector(".rFunction");
+        cvs.gFunction = cvs.querySelector(".gFunction");
+        cvs.bFunction = cvs.querySelector(".bFunction");
+        cvs.translateX = translateX;
+        cvs.translateY = translateY;
+
+        var drawBtn = cvs.querySelector(".generate");
+        drawBtn.cvs = cvs;
+        drawBtn.addEventListener("click", drawGraph.bind(cvs));
+
+        /*var clearBtn = cvs.querySelector(".clear");
+        clearBtn.cvs = cvs;
+        clearBtn.addEventListener("click", clearPoints);*/
+
+        var downBtn = cvs.querySelector(".download");
+        downBtn.cvs = cvs;
+        downBtn.addEventListener("click", downloadImage);
+      }
+
+      function clearAll(){
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        if(this.imageBmp){
+          this.ctx.save();
+          this.ctx.globalAlpha = 0.5;
+          this.ctx.drawImage(this.imageBmp, 0, 0);
+          this.ctx.restore();
+        }
+      }
+
+      function drawGraph() {
+        var ctx = this.canvas.ctx;
+        var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
+        var rFn = new Function("x", "y", "return " + this.rFunction.value);
+        var gFn = new Function("x", "y", "return " + this.gFunction.value);
+        var bFn = new Function("x", "y", "return " + this.bFunction.value);
+        for(var row = 0; row < this.canvas.height; row++){
+          var y = this.translateY(row);
+          for(var col = 0; col < this.canvas.width; col++){
+            var x = this.translateX(col);
+
+            var r = rFn(x, y) * 255.0;
+            var g = gFn(x, y) * 255.0;
+            var b = bFn(x, y) * 255.0;
+
+            applyColorToImage(imgData, this.canvas.width, col, row, r, g, b);
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        // TODO: draw axes
+      }
+
+      function translateX(col){
+        return ((col / this.canvas.width) * (this.maxX - this.minX)) + this.minX;
+      }
+
+      function translateY(row){
+        return ((row / this.canvas.height) * (this.maxY - this.minY)) + this.minY;
+      }
+
+      function downloadImage(evt){
+        var data = this.cvs.canvas.toBlob(function(blob){
+          var imgUrl = URL.createObjectURL(blob);
+          var imgLink = document.querySelector("a.imgLink");
+          imgLink.href = imgUrl;
+          imgLink.download = "graph.png";
+          imgLink.click();
+        });
+      }
+
+      function applyColorToImage(imgData, width, x, y, r, g, b){
+        var i = 4 * (y * width + x);
+        imgData.data[i] = r;
+        imgData.data[i+1] = g;
+        imgData.data[i+2] = b;
+        imgData.data[i+3] = 255;
+      }
+
+      window.addEventListener("load", function(){
+        document.querySelectorAll(".grapher").forEach(initCanvas);
+      })
+    //]]></script>
+  </head>
+  <body>
+    <div class="grapher">
+      <canvas width="800" height="600" style="border: 1px solid black;"></canvas>
+      <div class="controls">
+        <label>
+          r =
+          <input type="text" class="rFunction" />
+        </label>
+        <br />
+        <label>
+          g =
+          <input type="text" class="gFunction" />
+        </label>
+        <br />
+        <label>
+          b =
+          <input type="text" class="bFunction" />
+        </label>
+        <br />
+        <button class="generate">Graph</button>
+        <button class="download">Download Image</button>
+        <a class="imgLink" style="display: none">image download</a>
+      </div>
+      <!--<img id="testImage" />-->
+    </div>
+  </body>
+</html>
