@@ -13,6 +13,8 @@
         cvs.maxX = 5.0;
         cvs.minY = -5.0;
         cvs.maxY = 5.0;
+        cvs.minColor = 0.0;
+        cvs.maxColor = 1.0;
         cvs.rFunction = cvs.querySelector(".rFunction");
         cvs.gFunction = cvs.querySelector(".gFunction");
         cvs.bFunction = cvs.querySelector(".bFunction");
@@ -20,6 +22,7 @@
         cvs.translateY = translateY;
         cvs.translateRow = translateRow;
         cvs.translateCol = translateCol;
+        cvs.translateColor = translateColor;
         cvs.drawAxes = drawAxes;
         cvs.draw = drawGraph;
 
@@ -30,7 +33,7 @@
         downBtn.addEventListener("click", downloadImage.bind(cvs));
 
         cvs.showAxes = cvs.querySelector(".showAxes");
-        cvs.showAxes.addEventListener("input", drawGraph.bind(cvs));
+        cvs.showAxes.addEventListener("change", drawGraph.bind(cvs));
 
         cvs.draw();
       }
@@ -48,30 +51,24 @@
       function drawAxes() {
         if(this.showAxes.checked){
           var ctx = this.canvas.ctx;
-          ctx.fillStyle = "#000000";
-          console.log("Drawing axes");
+          ctx.fillStyle = "white";
           if(this.minX <= 0.0 && this.maxX >= 0.0){
-            console.log("Drawing Y axis");
             var zeroCol = this.translateCol(0.0);
-            console.log("zeroCol = " + zeroCol);
             ctx.fillRect(zeroCol, 0, 1, this.canvas.height);
 
-            var notchSpacing = Math.pow(10, Math.ceil(Math.log10(this.maxY - this.minY)) - 1);
+            var notchSpacing = Math.pow(10, Math.ceil(Math.log10((this.maxY - this.minY)/5.0)) - 1);
             for(var y = this.minY; y <= this.maxY; y += notchSpacing){
               var row = this.translateRow(y);
-              console.log(row);
               ctx.fillRect(zeroCol, row, 5, 1);
             }
           }
           if(this.minY <= 0.0 && this.maxY >= 0.0){
-            console.log("Drawing X axis");
             var zeroRow = this.translateRow(0.0);
             ctx.fillRect(0, zeroRow, this.canvas.width, 1);
 
-            var notchSpacing = Math.pow(10, Math.ceil(Math.log10(this.maxX - this.minX)) - 1);
+            var notchSpacing = Math.pow(10, Math.ceil(Math.log10((this.maxX - this.minX)/5.0)) - 1);
             for(var x = this.minX; x <= this.maxX; x += notchSpacing){
               var col = this.translateCol(x);
-              console.log(col);
               ctx.fillRect(col, zeroRow, 1, -5);
             }
           }
@@ -80,26 +77,24 @@
 
       function drawGraph() {
         this.canvas.clearAll();
-        if(this.rFunction.value || this.gFunction.value || this.bFunction.value){
-          var ctx = this.canvas.ctx;
-          var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
-          var rFn = new Function("x", "y", "return " + this.rFunction.value);
-          var gFn = new Function("x", "y", "return " + this.gFunction.value);
-          var bFn = new Function("x", "y", "return " + this.bFunction.value);
-          for(var row = 0; row < this.canvas.height; row++){
-            var y = this.translateY(row);
-            for(var col = 0; col < this.canvas.width; col++){
-              var x = this.translateX(col);
+        var ctx = this.canvas.ctx;
+        var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
+        var rFn = new Function("x", "y", "return " + this.rFunction.value);
+        var gFn = new Function("x", "y", "return " + this.gFunction.value);
+        var bFn = new Function("x", "y", "return " + this.bFunction.value);
+        for(var row = 0; row < this.canvas.height; row++){
+          var y = this.translateY(row);
+          for(var col = 0; col < this.canvas.width; col++){
+            var x = this.translateX(col);
 
-              var r = rFn(x, y) * 255.0;
-              var g = gFn(x, y) * 255.0;
-              var b = bFn(x, y) * 255.0;
+            var r = this.translateColor(rFn(x, y));
+            var g = this.translateColor(gFn(x, y));
+            var b = this.translateColor(bFn(x, y));
 
-              applyColorToImage(imgData, this.canvas.width, col, row, r, g, b);
-            }
+            applyColorToImage(imgData, this.canvas.width, col, row, r, g, b);
           }
-          ctx.putImageData(imgData, 0, 0);
         }
+        ctx.putImageData(imgData, 0, 0);
         this.drawAxes();
       }
 
@@ -117,6 +112,10 @@
 
       function translateRow(y){
         return ((y - this.minY) / (this.maxY - this.minY)) * this.canvas.height;
+      }
+
+      function translateColor(c) {
+        return ((c - this.minColor) / (this.maxColor - this.minColor)) * 255.0;
       }
 
       function downloadImage(evt){
