@@ -117,7 +117,6 @@
         obj.querySelectorAll("input[name], textarea[name], select[name]")
           .forEach(function(input) {
             var name = input.name;
-            obj["_" + name] = input;
             var valueKey = "value";
             switch(input.type){
               case "number":
@@ -128,8 +127,11 @@
                 valueKey = "checked";
                 break;
             }
-            Object.defineProperty(obj, name, {get: function(){return this["_" + name][valueKey];}});
-            if(changeFn) input.addEventListener("change", changeFn);
+            obj[name] = input[valueKey];
+            input.addEventListener("change", function(){
+              obj[name] = input[valueKey];
+              if(changeFn) changeFn();
+            });
           });
         obj.querySelectorAll("button[name]")
           .forEach(function(btn) {
