@@ -88,7 +88,7 @@
       }
 
       function translateY(row){
-        return ((row / this.canvas.height) * (this.maxY - this.minY)) + this.minY;
+        return ((1.0 - (row / this.canvas.height)) * (this.maxY - this.minY)) + this.minY;
       }
 
       function translateCol(x){
@@ -96,7 +96,7 @@
       }
 
       function translateRow(y){
-        return ((y - this.minY) / (this.maxY - this.minY)) * this.canvas.height;
+        return (1.0 - ((y - this.minY) / (this.maxY - this.minY))) * this.canvas.height;
       }
 
       function translateColor(c) {
