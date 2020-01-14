@@ -9,15 +9,6 @@
         cvs.canvas = cvs.querySelector("canvas");
         cvs.canvas.ctx = cvs.canvas.getContext("2d");
         cvs.canvas.clearAll = clearAll;
-        cvs.minX = -5.0;
-        cvs.maxX = 5.0;
-        cvs.minY = -5.0;
-        cvs.maxY = 5.0;
-        cvs.minColor = 0.0;
-        cvs.maxColor = 1.0;
-        cvs.rFunction = cvs.querySelector(".rFunction");
-        cvs.gFunction = cvs.querySelector(".gFunction");
-        cvs.bFunction = cvs.querySelector(".bFunction");
         cvs.translateX = translateX;
         cvs.translateY = translateY;
         cvs.translateRow = translateRow;
@@ -26,14 +17,8 @@
         cvs.drawAxes = drawAxes;
         cvs.draw = drawGraph;
 
-        var drawBtn = cvs.querySelector(".generate");
-        drawBtn.addEventListener("click", drawGraph.bind(cvs));
-
-        var downBtn = cvs.querySelector(".download");
-        downBtn.addEventListener("click", downloadImage.bind(cvs));
-
-        cvs.showAxes = cvs.querySelector(".showAxes");
-        cvs.showAxes.addEventListener("change", drawGraph.bind(cvs));
+        var drawFn = cvs.draw.bind(cvs);
+        makeInputGetters(cvs, drawFn);
 
         cvs.draw();
       }
@@ -49,7 +34,7 @@
       }
 
       function drawAxes() {
-        if(this.showAxes.checked){
+        if(this.showAxes){
           var ctx = this.canvas.ctx;
           ctx.fillStyle = "white";
           if(this.minX <= 0.0 && this.maxX >= 0.0){
@@ -79,9 +64,9 @@
         this.canvas.clearAll();
         var ctx = this.canvas.ctx;
         var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
-        var rFn = new Function("x", "y", "return " + this.rFunction.value);
-        var gFn = new Function("x", "y", "return " + this.gFunction.value);
-        var bFn = new Function("x", "y", "return " + this.bFunction.value);
+        var rFn = new Function("x", "y", "return " + this.rFunction);
+        var gFn = new Function("x", "y", "return " + this.gFunction);
+        var bFn = new Function("x", "y", "return " + this.bFunction);
         for(var row = 0; row < this.canvas.height; row++){
           var y = this.translateY(row);
           for(var col = 0; col < this.canvas.width; col++){
@@ -128,6 +113,30 @@
         });
       }
 
+      function makeInputGetters(obj, changeFn) {
+        obj.querySelectorAll("input[name], textarea[name], select[name]")
+          .forEach(function(input) {
+            var name = input.name;
+            obj["_" + name] = input;
+            var valueKey = "value";
+            switch(input.type){
+              case "number":
+                valueKey = "valueAsNumber";
+                break;
+              case "checkbox":
+              case "radio":
+                valueKey = "checked";
+                break;
+            }
+            Object.defineProperty(obj, name, {get: function(){return this["_" + name][valueKey];}});
+            if(changeFn) input.addEventListener("change", changeFn);
+          });
+        obj.querySelectorAll("button[name]")
+          .forEach(function(btn) {
+            btn.addEventListener("click", window[btn.name].bind(obj));
+          });
+      }
+
       function applyColorToImage(imgData, width, x, y, r, g, b){
         var i = 4 * (y * width + x);
         imgData.data[i] = r;
@@ -147,23 +156,31 @@
       <div class="controls">
         <label>
           r =
-          <input type="text" class="rFunction" size="100" />
+          <input type="text" name="rFunction" size="100" />
         </label>
         <br />
         <label>
           g =
-          <input type="text" class="gFunction" size="100" />
+          <input type="text" name="gFunction" size="100" />
         </label>
         <br />
         <label>
           b =
-          <input type="text" class="bFunction" size="100" />
+          <input type="text" name="bFunction" size="100" />
         </label>
         <br />
-        <label>Show Axes <input type="checkbox" class="showAxes" checked /></label>
+        <label>X min: <input type="number" name="minX" value="-5" /></label>
+        <label>X max: <input type="number" name="maxX" value="5" /></label>
         <br />
-        <button class="generate">Graph</button>
-        <button class="download">Download Image</button>
+        <label>Y min: <input type="number" name="minY" value="-5" /></label>
+        <label>Y max: <input type="number" name="maxY" value="5" /></label>
+        <br />
+        <label>Color min: <input type="number" name="minColor" value="0" /></label>
+        <label>Color max: <input type="number" name="maxColor" value="1" /></label>
+        <br />
+        <label>Show Axes <input type="checkbox" name="showAxes" checked /></label>
+        <br />
+        <button name="downloadImage">Download Image</button>
         <a class="imgLink" style="display: none">image download</a>
       </div>
       <!--<img id="testImage" />-->
