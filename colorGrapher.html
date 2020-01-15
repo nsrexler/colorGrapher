@@ -64,9 +64,9 @@
         this.canvas.clearAll();
         var ctx = this.canvas.ctx;
         var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
-        var rFn = parseFunction(this.rFunction);
-        var gFn = parseFunction(this.gFunction);
-        var bFn = parseFunction(this.bFunction);
+        var rFn = this.enableR ? parseFunction(this.rFunction) : nullFn;
+        var gFn = this.enableG ? parseFunction(this.gFunction) : nullFn;
+        var bFn = this.enableB ? parseFunction(this.bFunction) : nullFn;
         for(var row = 0; row < this.canvas.height; row++){
           var y = this.translateY(row);
           for(var col = 0; col < this.canvas.width; col++){
@@ -84,16 +84,21 @@
       }
 
       var mathFns = Object.getOwnPropertyNames(Math);
-      var mathRegex = new RegExp("(" + mathFns.join("|") + ")", "g");
+      var mathRegex = new RegExp("(?<!Math.)\\b(" + mathFns.join("|") + ")\\b", "g");
+
+      function nullFn(x, y) {
+        return 0;
+      }
 
       function parseFunction(strFn) {
+        if(!strFn) return nullFn;
         try {
           // Prepend functions with Math.
           strFn = strFn.replace(mathRegex, "Math.$1");
           return new Function("x", "y", "return " + strFn);
         }
         catch(e) {
-          return function(x, y) { return 0; };
+          return nullFn;
         }
       }
 
@@ -170,19 +175,22 @@
     <div class="grapher">
       <canvas width="1000" height="1000" style="border: 1px solid black;"></canvas>
       <div class="controls">
+        <input type="checkbox" name="enableR" checked tabindex="1" />
         <label>
           r =
-          <input type="text" name="rFunction" size="100" />
+          <input type="text" name="rFunction" size="100" tabindex="2" />
         </label>
         <br />
+        <input type="checkbox" name="enableG" checked tabindex="1" />
         <label>
           g =
-          <input type="text" name="gFunction" size="100" />
+          <input type="text" name="gFunction" size="100" tabindex="2"  />
         </label>
         <br />
+        <input type="checkbox" name="enableB" checked tabindex="1" />
         <label>
           b =
-          <input type="text" name="bFunction" size="100" />
+          <input type="text" name="bFunction" size="100" tabindex="2"  />
         </label>
         <br />
         <label>X min: <input type="number" name="minX" value="-5" /></label>
