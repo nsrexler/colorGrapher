@@ -64,9 +64,9 @@
         this.canvas.clearAll();
         var ctx = this.canvas.ctx;
         var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
-        var rFn = new Function("x", "y", "return " + this.rFunction);
-        var gFn = new Function("x", "y", "return " + this.gFunction);
-        var bFn = new Function("x", "y", "return " + this.bFunction);
+        var rFn = parseFunction(this.rFunction);
+        var gFn = parseFunction(this.gFunction);
+        var bFn = parseFunction(this.bFunction);
         for(var row = 0; row < this.canvas.height; row++){
           var y = this.translateY(row);
           for(var col = 0; col < this.canvas.width; col++){
@@ -81,6 +81,20 @@
         }
         ctx.putImageData(imgData, 0, 0);
         this.drawAxes();
+      }
+
+      var mathFns = Object.getOwnPropertyNames(Math);
+      var mathRegex = new RegExp("(" + mathFns.join("|") + ")", "g");
+
+      function parseFunction(strFn) {
+        try {
+          // Prepend functions with Math.
+          strFn = strFn.replace(mathRegex, "Math.$1");
+          return new Function("x", "y", "return " + strFn);
+        }
+        catch(e) {
+          return function(x, y) { return 0; };
+        }
       }
 
       function translateX(col){
