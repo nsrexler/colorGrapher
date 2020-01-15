@@ -87,12 +87,18 @@
       var mathRegex = new RegExp("(?<!Math.)\\b(" + mathFns.join("|") + ")\\b", "g");
 
       function nullFn(x, y) {
-        return 0;
+        return null;
       }
 
       function parseFunction(strFn) {
         if(!strFn) return nullFn;
         try {
+          // Exponentiation
+          strFn = strFn.replace(/(\([^\)]+\)|[a-zA-Z]|-?\d*.?\d+)\^(\([^\)]+\)|[a-zA-Z]|-?\d*.?\d+)/g, "pow($1, $2)");
+          // Make multiplication explicit
+          strFn = strFn.replace(/(-?\d*.?\d+)([a-zA-Z])/g, "$1*$2")
+          strFn = strFn.replace(/xy/g, "x*y")
+          strFn = strFn.replace(/yx/g, "y*x")
           // Prepend functions with Math.
           strFn = strFn.replace(mathRegex, "Math.$1");
           return new Function("x", "y", "return " + strFn);
@@ -119,6 +125,7 @@
       }
 
       function translateColor(c) {
+        if(c == null || isNaN(c)) return 0;
         return ((c - this.minColor) / (this.maxColor - this.minColor)) * 255.0;
       }
 
