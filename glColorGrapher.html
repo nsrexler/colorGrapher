@@ -78,11 +78,13 @@
           void main() {
             // Calculate relative coords (uv)
             vec2 temp = gl_FragCoord.xy / resolution;
-            temp.y = 1.0 - temp.y;
             vec2 uv = temp * (maxCoord - minCoord) + minCoord;
 
             float x = uv.x;
             float y = uv.y;
+
+            float r = length(vec2(x, y));
+            float theta = atan(y, x);
 
             gl_FragColor.r = translateColor(${this.enableR ? formatFunction(this.rFunction) : "0.0"});
             gl_FragColor.g = translateColor(${this.enableG ? formatFunction(this.gFunction) : "0.0"});
