@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebGL RGB Grapher</title>
+    <script type="text/javascript" src="2DShader/2dshader.js"></script>
+    <script type="text/javascript">//<![CDATA[
+      "use strict";
+
+      const SCALING_FACTOR = window.devicePixelRatio;
+
+      function initCanvas(cvs){
+        cvs.canvas = cvs.querySelector("canvas");
+        resizeCanvas(cvs.canvas);
+        
+        cvs.translateRow = translateRow;
+        cvs.translateCol = translateCol;
+        //cvs.drawAxes = drawAxes;
+        cvs.drawAxes = () => {};
+        cvs.draw = drawGraph;
+
+        const drawFn = cvs.draw.bind(cvs);
+        makeInputGetters(cvs, drawFn);
+
+        cvs.draw();
+      }
+
+      function resizeCanvas(canvas) {
+        if (SCALING_FACTOR !== 1) {
+          canvas.style.width = canvas.width + "px";
+          canvas.style.height = canvas.height + "px";
+          canvas.width *= SCALING_FACTOR;
+          canvas.height *= SCALING_FACTOR;
+        }
+      }
+
+      function drawAxes() {
+        if(this.showAxes){
+          const ctx = this.canvas.ctx;
+          ctx.fillStyle = "white";
+          if(this.minX <= 0.0 && this.maxX >= 0.0){
+            const zeroCol = this.translateCol(0.0);
+            ctx.fillRect(zeroCol, 0, 1, this.canvas.height);
+
+            const notchSpacing = Math.pow(10, Math.ceil(Math.log10((this.maxY - this.minY)/5.0)) - 1);
+            for(let y = this.minY; y <= this.maxY; y += notchSpacing){
+              const row = this.translateRow(y);
+              ctx.fillRect(zeroCol, row, 5 * SCALING_FACTOR, 1);
+            }
+          }
+          if(this.minY <= 0.0 && this.maxY >= 0.0){
+            const zeroRow = this.translateRow(0.0);
+            ctx.fillRect(0, zeroRow, this.canvas.width, 1);
+
+            const notchSpacing = Math.pow(10, Math.ceil(Math.log10((this.maxX - this.minX)/5.0)) - 1);
+            for(let x = this.minX; x <= this.maxX; x += notchSpacing){
+              const col = this.translateCol(x);
+              ctx.fillRect(col, zeroRow, 1, -5 * SCALING_FACTOR);
+            }
+          }
+        }
+      }
+
+      function drawGraph() {
+        const gl = this.canvas.getContext("webgl");
+
+        const fsSource = `
+          precision highp float;
+          uniform vec2 resolution;
+          uniform vec2 minCoord;
+          uniform vec2 maxCoord;
+          uniform float minColor;
+          uniform float maxColor;
+
+          float translateColor(float c) {
+            return ((c - minColor) / (maxColor - minColor));
+          }
+
+          void main() {
+            // Calculate relative coords (uv)
+            vec2 temp = gl_FragCoord.xy / resolution;
+            temp.y = 1.0 - temp.y;
+            vec2 uv = temp * (maxCoord - minCoord) + minCoord;
+
+            float x = uv.x;
+            float y = uv.y;
+
+            gl_FragColor.r = translateColor(${this.enableR ? formatFunction(this.rFunction) : "0.0"});
+            gl_FragColor.g = translateColor(${this.enableG ? formatFunction(this.gFunction) : "0.0"});
+            gl_FragColor.b = translateColor(${this.enableB ? formatFunction(this.bFunction) : "0.0"});
+            gl_FragColor.a = 1.0;
+          }
+        `;
+
+        draw2DShader(gl, fsSource, (shaderProgram) => {
+          gl.uniform2f(gl.getUniformLocation(shaderProgram, "resolution"), this.canvas.width, this.canvas.height);
+          gl.uniform2f(gl.getUniformLocation(shaderProgram, "minCoord"), this.minX, this.minY);
+          gl.uniform2f(gl.getUniformLocation(shaderProgram, "maxCoord"), this.maxX, this.maxY);
+          gl.uniform1f(gl.getUniformLocation(shaderProgram, "minColor"), this.minColor);
+          gl.uniform1f(gl.getUniformLocation(shaderProgram, "maxColor"), this.maxColor);
+        });
+
+        this.drawAxes();
+      }
+
+      function formatFunction(strFn) {
+        if(!strFn) return "0.0";
+        try {
+          // Exponentiation
+          strFn = strFn.replace(/(\([^\)]+\)|[a-zA-Z]|-?\d*.?\d+)\^(\([^\)]+\)|[a-zA-Z]|-?\d*.?\d+)/g, "pow($1, $2)");
+          // Make multiplication explicit
+          strFn = strFn.replace(/(-?\d*.?\d+)([a-zA-Z])/g, "$1*$2")
+          strFn = strFn.replace(/xy/g, "x*y")
+          strFn = strFn.replace(/yx/g, "y*x")
+          // Replace integers with floats
+          strFn = strFn.replace(/(?<!\.)(\d+)(?!\.)/g, "$1.0");
+          return strFn;
+        }
+        catch(e) {
+          return "0.0";
+        }
+      }
+
+      function translateCol(x){
+        return ((x - this.minX) / (this.maxX - this.minX)) * this.canvas.width;
+      }
+
+      function translateRow(y){
+        return (1.0 - ((y - this.minY) / (this.maxY - this.minY))) * this.canvas.height;
+      }
+
+      function downloadImage(evt){
+        this.draw();
+        this.canvas.toBlob(function(blob){
+          const imgUrl = URL.createObjectURL(blob);
+          const imgLink = document.querySelector("a.imgLink");
+          imgLink.href = imgUrl;
+          imgLink.download = "graph.png";
+          imgLink.click();
+        });
+      }
+
+      function makeInputGetters(obj, changeFn) {
+        obj.querySelectorAll("input[name], textarea[name], select[name]")
+          .forEach(function(input) {
+            const name = input.name;
+            let valueKey = "value";
+            switch(input.type){
+              case "number":
+                valueKey = "valueAsNumber";
+                break;
+              case "checkbox":
+              case "radio":
+                valueKey = "checked";
+                break;
+            }
+            obj[name] = input[valueKey];
+            input.addEventListener("change", function(){
+              obj[name] = input[valueKey];
+              if(changeFn) changeFn();
+            });
+          });
+        obj.querySelectorAll("button[name]")
+          .forEach(function(btn) {
+            btn.addEventListener("click", window[btn.name].bind(obj));
+          });
+      }
+
+      window.addEventListener("load", function(){
+        document.querySelectorAll(".grapher").forEach(initCanvas);
+      })
+    //]]></script>
+  </head>
+  <body>
+    <div class="grapher">
+      <canvas width="1000" height="1000" style="border: 1px solid black;"></canvas>
+      <div class="controls">
+        <input type="checkbox" name="enableR" checked tabindex="1" />
+        <label>
+          r =
+          <input type="text" name="rFunction" size="100" tabindex="2" />
+        </label>
+        <br />
+        <input type="checkbox" name="enableG" checked tabindex="1" />
+        <label>
+          g =
+          <input type="text" name="gFunction" size="100" tabindex="2"  />
+        </label>
+        <br />
+        <input type="checkbox" name="enableB" checked tabindex="1" />
+        <label>
+          b =
+          <input type="text" name="bFunction" size="100" tabindex="2"  />
+        </label>
+        <br />
+        <label>X min: <input type="number" name="minX" value="-5" /></label>
+        <label>X max: <input type="number" name="maxX" value="5" /></label>
+        <br />
+        <label>Y min: <input type="number" name="minY" value="-5" /></label>
+        <label>Y max: <input type="number" name="maxY" value="5" /></label>
+        <br />
+        <label>Color min: <input type="number" name="minColor" value="0" /></label>
+        <label>Color max: <input type="number" name="maxColor" value="1" /></label>
+        <br />
+        <label>Show Axes <input type="checkbox" name="showAxes" checked /></label>
+        <br />
+        <button name="downloadImage">Download Image</button>
+        <a class="imgLink" style="display: none">image download</a>
+      </div>
+      <!--<img id="testImage" />-->
+    </div>
+  </body>
+</html>
