@@ -5,8 +5,12 @@
     <script type="text/javascript">//<![CDATA[
       "use strict";
 
+      const SCALING_FACTOR = window.devicePixelRatio;
+
       function initCanvas(cvs){
         cvs.canvas = cvs.querySelector("canvas");
+        resizeCanvas(cvs.canvas);
+        
         cvs.canvas.ctx = cvs.canvas.getContext("2d");
         cvs.canvas.clearAll = clearAll;
         cvs.translateX = translateX;
@@ -17,10 +21,19 @@
         cvs.drawAxes = drawAxes;
         cvs.draw = drawGraph;
 
-        var drawFn = cvs.draw.bind(cvs);
+        const drawFn = cvs.draw.bind(cvs);
         makeInputGetters(cvs, drawFn);
 
         cvs.draw();
+      }
+
+      function resizeCanvas(canvas) {
+        if (SCALING_FACTOR !== 1) {
+          canvas.style.width = canvas.width + "px";
+          canvas.style.height = canvas.height + "px";
+          canvas.width *= SCALING_FACTOR;
+          canvas.height *= SCALING_FACTOR;
+        }
       }
 
       function clearAll(){
@@ -35,26 +48,26 @@
 
       function drawAxes() {
         if(this.showAxes){
-          var ctx = this.canvas.ctx;
+          const ctx = this.canvas.ctx;
           ctx.fillStyle = "white";
           if(this.minX <= 0.0 && this.maxX >= 0.0){
-            var zeroCol = this.translateCol(0.0);
+            const zeroCol = this.translateCol(0.0);
             ctx.fillRect(zeroCol, 0, 1, this.canvas.height);
 
-            var notchSpacing = Math.pow(10, Math.ceil(Math.log10((this.maxY - this.minY)/5.0)) - 1);
-            for(var y = this.minY; y <= this.maxY; y += notchSpacing){
-              var row = this.translateRow(y);
-              ctx.fillRect(zeroCol, row, 5, 1);
+            const notchSpacing = Math.pow(10, Math.ceil(Math.log10((this.maxY - this.minY)/5.0)) - 1);
+            for(let y = this.minY; y <= this.maxY; y += notchSpacing){
+              const row = this.translateRow(y);
+              ctx.fillRect(zeroCol, row, 5 * SCALING_FACTOR, 1);
             }
           }
           if(this.minY <= 0.0 && this.maxY >= 0.0){
-            var zeroRow = this.translateRow(0.0);
+            const zeroRow = this.translateRow(0.0);
             ctx.fillRect(0, zeroRow, this.canvas.width, 1);
 
-            var notchSpacing = Math.pow(10, Math.ceil(Math.log10((this.maxX - this.minX)/5.0)) - 1);
-            for(var x = this.minX; x <= this.maxX; x += notchSpacing){
-              var col = this.translateCol(x);
-              ctx.fillRect(col, zeroRow, 1, -5);
+            const notchSpacing = Math.pow(10, Math.ceil(Math.log10((this.maxX - this.minX)/5.0)) - 1);
+            for(let x = this.minX; x <= this.maxX; x += notchSpacing){
+              const col = this.translateCol(x);
+              ctx.fillRect(col, zeroRow, 1, -5 * SCALING_FACTOR);
             }
           }
         }
@@ -62,19 +75,19 @@
 
       function drawGraph() {
         this.canvas.clearAll();
-        var ctx = this.canvas.ctx;
-        var imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
-        var rFn = this.enableR ? parseFunction(this.rFunction) : nullFn;
-        var gFn = this.enableG ? parseFunction(this.gFunction) : nullFn;
-        var bFn = this.enableB ? parseFunction(this.bFunction) : nullFn;
-        for(var row = 0; row < this.canvas.height; row++){
-          var y = this.translateY(row);
-          for(var col = 0; col < this.canvas.width; col++){
-            var x = this.translateX(col);
+        const ctx = this.canvas.ctx;
+        const imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
+        const rFn = this.enableR ? parseFunction(this.rFunction) : nullFn;
+        const gFn = this.enableG ? parseFunction(this.gFunction) : nullFn;
+        const bFn = this.enableB ? parseFunction(this.bFunction) : nullFn;
+        for(let row = 0; row < this.canvas.height; row++){
+          const y = this.translateY(row);
+          for(let col = 0; col < this.canvas.width; col++){
+            const x = this.translateX(col);
 
-            var r = this.translateColor(rFn(x, y));
-            var g = this.translateColor(gFn(x, y));
-            var b = this.translateColor(bFn(x, y));
+            const r = this.translateColor(rFn(x, y));
+            const g = this.translateColor(gFn(x, y));
+            const b = this.translateColor(bFn(x, y));
 
             applyColorToImage(imgData, this.canvas.width, col, row, r, g, b);
           }
@@ -83,8 +96,8 @@
         this.drawAxes();
       }
 
-      var mathFns = Object.getOwnPropertyNames(Math);
-      var mathRegex = new RegExp("(?<!Math.)\\b(" + mathFns.join("|") + ")\\b", "g");
+      const mathFns = Object.getOwnPropertyNames(Math);
+      const mathRegex = new RegExp("(?<!Math.)\\b(" + mathFns.join("|") + ")\\b", "g");
 
       function nullFn(x, y) {
         return null;
@@ -130,9 +143,9 @@
       }
 
       function downloadImage(evt){
-        var data = this.canvas.toBlob(function(blob){
-          var imgUrl = URL.createObjectURL(blob);
-          var imgLink = document.querySelector("a.imgLink");
+        this.canvas.toBlob(function(blob){
+          const imgUrl = URL.createObjectURL(blob);
+          const imgLink = document.querySelector("a.imgLink");
           imgLink.href = imgUrl;
           imgLink.download = "graph.png";
           imgLink.click();
@@ -142,8 +155,8 @@
       function makeInputGetters(obj, changeFn) {
         obj.querySelectorAll("input[name], textarea[name], select[name]")
           .forEach(function(input) {
-            var name = input.name;
-            var valueKey = "value";
+            const name = input.name;
+            let valueKey = "value";
             switch(input.type){
               case "number":
                 valueKey = "valueAsNumber";
@@ -166,7 +179,7 @@
       }
 
       function applyColorToImage(imgData, width, x, y, r, g, b){
-        var i = 4 * (y * width + x);
+        const i = 4 * (y * width + x);
         imgData.data[i] = r;
         imgData.data[i+1] = g;
         imgData.data[i+2] = b;
