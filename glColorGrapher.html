@@ -61,15 +61,16 @@
       }
 
       function drawGraph() {
-        const gl = this.canvas.getContext("webgl");
+        const gl = this.canvas.getContext("webgl2");
 
-        const fsSource = `
+        const fsSource = `#version 300 es
           precision highp float;
           uniform vec2 resolution;
           uniform vec2 minCoord;
           uniform vec2 maxCoord;
           uniform float minColor;
           uniform float maxColor;
+          out vec4 graphColor;
 
           float translateColor(float c) {
             return ((c - minColor) / (maxColor - minColor));
@@ -86,10 +87,10 @@
             float r = length(vec2(x, y));
             float theta = atan(y, x);
 
-            gl_FragColor.r = translateColor(${this.enableR ? formatFunction(this.rFunction) : "0.0"});
-            gl_FragColor.g = translateColor(${this.enableG ? formatFunction(this.gFunction) : "0.0"});
-            gl_FragColor.b = translateColor(${this.enableB ? formatFunction(this.bFunction) : "0.0"});
-            gl_FragColor.a = 1.0;
+            graphColor.r = translateColor(${this.enableR ? formatFunction(this.rFunction) : "0.0"});
+            graphColor.g = translateColor(${this.enableG ? formatFunction(this.gFunction) : "0.0"});
+            graphColor.b = translateColor(${this.enableB ? formatFunction(this.bFunction) : "0.0"});
+            graphColor.a = 1.0;
           }
         `;
 
